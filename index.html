@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pobres Infectados</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Noto+Serif+JP:wght@200;400&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1410;
+    --paper: #f0ebe0;
+    --blood: #7a1515;
+    --ghost: rgba(240,235,224,0.06);
+    --fade: #c8b89a;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: #0a0806;
+    color: var(--paper);
+    font-family: 'IM Fell English', Georgia, serif;
+    overflow-x: hidden;
+    cursor: crosshair;
+  }
+
+  #cover {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    overflow: hidden;
+    background: #070504;
+  }
+
+  #eye-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  #cover-gradient {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom,
+      rgba(7,5,4,0) 0%,
+      rgba(7,5,4,0) 55%,
+      rgba(7,5,4,0.7) 80%,
+      rgba(7,5,4,1) 100%
+    );
+    pointer-events: none;
+  }
+
+  #whisper-cover {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Special Elite', monospace;
+    font-size: clamp(0.7rem, 2vw, 0.9rem);
+    letter-spacing: 0.45em;
+    text-transform: uppercase;
+    color: rgba(200,184,154,0);
+    pointer-events: none;
+    white-space: nowrap;
+    transition: color 2s ease, text-shadow 2s ease;
+    text-shadow: 0 0 0px rgba(122,21,21,0);
+    z-index: 3;
+  }
+
+  #cover-hint {
+    position: absolute;
+    bottom: 48%;
+    width: 100%;
+    text-align: center;
+    font-family: 'Noto Serif JP', serif;
+    font-weight: 200;
+    font-size: 0.6rem;
+    letter-spacing: 0.45em;
+    color: rgba(200,184,154,0);
+    text-transform: uppercase;
+    pointer-events: none;
+    z-index: 3;
+    animation: hintFade 1s 2s forwards;
+  }
+
+  @keyframes hintFade {
+    0%   { color: rgba(200,184,154,0); }
+    40%  { color: rgba(200,184,154,0.38); }
+    70%  { color: rgba(200,184,154,0.38); }
+    100% { color: rgba(200,184,154,0); }
+  }
+
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.015); }
+  }
+
+  .cover-text {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+  }
+
+  .cover-title {
+    font-family: 'Special Elite', monospace;
+    font-size: clamp(2.2rem, 6vw, 4.5rem);
+    letter-spacing: 0.18em;
+    color: var(--paper);
+    text-transform: uppercase;
+    line-height: 1;
+    text-shadow: 0 0 40px rgba(122,21,21,0.4), 0 2px 8px rgba(0,0,0,0.9);
+    animation: flicker 12s ease-in-out infinite;
+  }
+
+  @keyframes flicker {
+    0%, 96%, 100% { opacity: 1; }
+    97% { opacity: 0.88; }
+    98% { opacity: 1; }
+    99% { opacity: 0.92; }
+  }
+
+  .cover-subtitle {
+    font-family: 'Noto Serif JP', serif;
+    font-weight: 200;
+    font-size: clamp(0.65rem, 1.8vw, 0.85rem);
+    letter-spacing: 0.35em;
+    color: var(--fade);
+    text-transform: uppercase;
+    line-height: 1.8;
+  }
+
+  .scroll-cue {
+    position: relative;
+    z-index: 2;
+    margin-top: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    animation: fadeIn 1s 2.5s forwards;
+    cursor: pointer;
+  }
+
+  .scroll-cue span {
+    font-family: 'Noto Serif JP', serif;
+    font-weight: 200;
+    font-size: 0.65rem;
+    letter-spacing: 0.4em;
+    color: var(--fade);
+    text-transform: uppercase;
+  }
+
+  .scroll-line {
+    width: 1px;
+    height: 50px;
+    background: linear-gradient(to bottom, var(--fade), transparent);
+    animation: drip 2s ease-in-out 2.5s infinite;
+  }
+
+  @keyframes drip {
+    0% { transform: scaleY(0); transform-origin: top; opacity: 0; }
+    50% { transform: scaleY(1); opacity: 1; }
+    100% { transform: scaleY(1); transform-origin: bottom; opacity: 0; }
+  }
+
+  #story {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 80px 32px 120px;
+  }
+
+  .chapter-mark {
+    text-align: center;
+    margin-bottom: 60px;
+    opacity: 0;
+    animation: fadeIn 1.2s 0.3s forwards;
+  }
+
+  .chapter-mark svg {
+    width: 80px;
+    opacity: 0.25;
+  }
+
+  .text-block {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.9s ease, transform 0.9s ease;
+    margin-bottom: 0;
+  }
+
+  .text-block.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  p {
+    font-size: clamp(1rem, 2.2vw, 1.12rem);
+    line-height: 2;
+    color: #d8cfc0;
+    margin-bottom: 1.6em;
+    text-align: justify;
+    hyphens: auto;
+  }
+
+  .text-block:first-of-type p:first-of-type::first-letter {
+    font-family: 'Special Elite', monospace;
+    font-size: 4.2em;
+    float: left;
+    line-height: 0.75;
+    margin: 0.08em 0.1em 0 0;
+    color: var(--blood);
+    text-shadow: 2px 2px 0 #3a0a0a;
+  }
+
+  .dial {
+    font-style: italic;
+    color: #c4bba8;
+    padding-left: 1.5em;
+    border-left: 1px solid rgba(200,184,154,0.15);
+    margin-bottom: 1.6em;
+    line-height: 2;
+    font-size: clamp(1rem, 2.2vw, 1.12rem);
+  }
+
+  .break {
+    text-align: center;
+    margin: 3em 0;
+    color: rgba(200,184,154,0.25);
+    letter-spacing: 0.6em;
+    font-size: 0.7rem;
+  }
+
+  .beat {
+    font-size: clamp(1rem, 2.2vw, 1.1rem);
+    line-height: 2;
+    color: #a89880;
+    font-style: italic;
+    text-align: center;
+    margin: 2.5em 0;
+    border-top: 1px solid rgba(122,21,21,0.15);
+    border-bottom: 1px solid rgba(122,21,21,0.15);
+    padding: 1.5em 0;
+  }
+
+  .news {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(200,184,154,0.12);
+    border-left: 3px solid var(--blood);
+    padding: 1.6em 2em;
+    font-family: 'Special Elite', monospace;
+    font-size: 0.88rem;
+    color: var(--fade);
+    line-height: 1.9;
+    letter-spacing: 0.02em;
+    margin-top: 3em;
+  }
+
+  .fim {
+    text-align: center;
+    margin-top: 60px;
+    font-family: 'IM Fell English', Georgia, serif;
+    font-style: italic;
+    font-size: 1rem;
+    color: rgba(200,184,154,0.45);
+    letter-spacing: 0.25em;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-size: 150px 150px;
+  }
+
+  .drip-dot {
+    position: fixed;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--blood);
+    pointer-events: none;
+    z-index: 10000;
+    animation: dotFade 0.9s forwards;
+  }
+
+  @keyframes dotFade {
+    0% { opacity: 0.6; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.2) translateY(8px); }
+  }
+
+  @keyframes fadeIn {
+    to { opacity: 1; }
+  }
+
+  @media (max-width: 600px) {
+    #story { padding: 60px 22px 100px; }
+    .dial { padding-left: 1em; }
+  }
+</style>
+</head>
+<body>
+
+<section id="cover">
+  <canvas id="eye-canvas"></canvas>
+  <div id="cover-gradient"></div>
+  <div id="whisper-cover">se aproxime, por favor</div>
+  <div class="cover-text" style="position:relative;z-index:4;">
+    <h1 class="cover-title">Pobres Infectados</h1>
+  </div>
+  <div class="scroll-cue" style="position:relative;z-index:4;" onclick="document.getElementById('story').scrollIntoView({behavior:'smooth'})">
+    <span>ler o conto</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<main id="story">
+
+  <div class="chapter-mark">
+    <svg viewBox="0 0 80 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="0" y1="10" x2="30" y2="10" stroke="#c8b89a" stroke-width="0.5"/>
+      <circle cx="40" cy="10" r="3" fill="#7a1515"/>
+      <line x1="50" y1="10" x2="80" y2="10" stroke="#c8b89a" stroke-width="0.5"/>
+    </svg>
+  </div>
+
+  <div class="text-block">
+    <p>A mãe nunca sabia o que responder, mas quem, numa situação dessas saberia? As crianças eram horríveis, ela tinha consciência disso desde que nasceram. Quando estava grávida, pensou que deveria ser a melhor sensação do mundo, depois de tantas vezes ouvir que talvez nunca fosse mãe. Durante aqueles nove meses, Hikaru, Sakura e Hana pareceram um milagre divino, mas durou pouco.</p>
+  </div>
+
+  <div class="text-block">
+    <p class="dial">— Yumi, está tudo bem?</p>
+    <p>Ela voltou ao presente. Quanto tempo ficou vagando pelos próprios pensamentos?</p>
+    <p class="dial">— Sim, desculpe. Qual foi a sua pergunta mesmo?</p>
+    <p class="dial">— Só fiquei curiosa para saber o que as suas crianças têm.</p>
+    <p>Claro, ela se lembrou. Era sempre a mesma pergunta e a mesma resposta genérica.</p>
+    <p class="dial">— O médico diz que é uma infecção.</p>
+  </div>
+
+  <div class="text-block">
+    <p>A senhora olhou para as três crianças no carrinho como se sentisse nojo. A mãe entendia o sentimento, pois também sentia. Hikaru era um menino de cabelos escuros como a noite e costumava ser o mais sorridente, embora a mancha embaixo dos olhos assustasse as pessoas. Sakura tinha poucos cabelos, diferentemente do irmão, pois a mancha ficava no couro cabeludo, impedindo-os de crescer e deixando-a com uma aparência doentia. Hana tinha as mãos e a boca manchadas; com certeza, era a pior dos três e, desde sempre, a mais afetada pelos comentários.</p>
+  </div>
+
+  <div class="text-block">
+    <p>Por anos eles moraram em uma pequena cidade no Japão, andando sempre juntos e ouvindo os sussurros por onde passavam. Conforme cresceram, os sintomas da doença foram piorando. Era como se toda a energia e vitalidade de um adolescente fossem sugadas. Vários médicos especialistas, intrigados com o caso, tentaram ajudar, mas nada adiantava, e a mãe começou a viver em negação. A lei natural da vida indica que ela deveria partir primeiro, mas, como nada no mundo era justo, estava vendo os seus amados filhos morrerem ano após ano diante dos seus olhos.</p>
+  </div>
+
+  <div class="text-block">
+    <p>A vizinhança culpava a mãe, seguindo a previsibilidade da sociedade, como se ela fosse responsável por eles serem daquele jeito. Os gritos e súplicas dos três durante a madrugada ajudaram a reforçar esse pensamento. O que ela fazia com aqueles pobres infectados? Talvez os batesse até implorar para nunca terem nascido. Mas mal sabiam que, segundo os médicos, os delírios eram parte da doença. A mãe nem se lembrava da última vez que dormira bem. As noites eram sempre acompanhadas de muito choro, mesmo quando eles já estavam grandes, ao ponto de ela desistir de tentar ajudar.</p>
+  </div>
+
+  <div class="text-block">
+    <p>Os dias passaram a ser monótonos depois que Yumi teve seus filhos. Trabalhava durante o dia e vivia no inferno durante a noite. Ela nunca foi muito religiosa, até a morte do irmão. Tudo aconteceu de forma tão repentina e estranha que passou a rezar, e isso se tornou parte da sua invariável rotina.</p>
+  </div>
+
+  <div class="break">✦ ✦ ✦</div>
+
+  <div class="text-block">
+    <p class="dial">— Você não está mais rezando — Yumi disse para Hana.</p>
+    <p class="dial">— De que adianta? Todo mundo sabe que essa coisa está só esperando você morrer para levar a gente.</p>
+    <p class="dial">— Isso não é verdade. Os médicos sabem que é uma infecção e estamos…</p>
+    <p>A conversa foi interrompida pelos choros altos de Sakura no banheiro. Apenas os olhos de Yumi se moveram para averiguar o horário: era meia-noite. Os filhos não conseguiam fechar os olhos; diziam que algo os esperava na escuridão, então só dormiam por exaustão, pouco antes do sol nascer. Não que ela não acreditasse neles, pois já vira coisas tão macabras quanto aquela, mas decidiu aceitar o diagnóstico de delírio e esquizofrenia porque não tinha mais forças. Sem contar que eles nunca tiveram provas. Durante todos aqueles anos, a mãe nunca viu ou ouviu nada do que descreviam, até aquela noite.</p>
+  </div>
+
+  <div class="text-block">
+    <p class="dial">— Mãe, tem algo de errado com a Sakura. Ela se trancou no banheiro — Hikaru apareceu na cozinha com o olhar assustado.</p>
+    <p class="dial">— Sakura, abre essa merda! — Hana gritou, batendo na porta.</p>
+    <p>Depois de alguns minutos, que pareceram uma eternidade, a porta abriu, e todos desejaram voltar no tempo e reagir melhor ao que viram. Sakura tinha os olhos cheios de lágrimas, soluçava tanto que mal conseguia falar. Sua mão estava fechada, como se segurasse alguma coisa. Quando a abriu, foi possível ver os próprios dentes. A mãe entrou em choque. Como ela poderia ter arrancado aquilo sozinha?</p>
+    <p class="dial">— Eu não arranquei. Foi ela — Sakura falou em meio aos soluços, apontando para dentro do box.</p>
+    <p>Não havia nada lá. Yumi só via sangue no chão e nas paredes.</p>
+  </div>
+
+  <div class="text-block">
+    <p class="dial">— Isso está indo longe demais. Eu juro que me segurei para não internar vocês, mas não…</p>
+    <p>Enquanto Yumi falava, tentando não desabar naquele momento em que o último fio de esperança se rompia, um barulho rastejante veio do chão. Ela sentiu uma pontada no estômago e um aperto na traqueia, como se, por um instante, o ar faltasse nos pulmões. Então parou de falar. Virou os olhos devagar para trás e pensou: talvez isso seja um sonho. Mas, no fundo, estaria apenas se enganando, pois sabia que há muito tempo já não sonhava. Uma mancha de sangue mexeu, parecendo uma gosma e tinha duas bolas escuras no topo, e Yumi presumiu que fossem olhos.</p>
+  </div>
+
+  <div class="text-block">
+    <p class="beat">Se aproxime, por favor.</p>
+    <p>E assim ela fez. Abaixou-se no chão e sentiu uma urgência inexplicável de tocar a coisa.</p>
+    <p class="dial">— Se eu fosse você, não faria isso.</p>
+  </div>
+
+  <div class="text-block">
+    <p>Yumi levou um susto e se levantou rapidamente. Reconheceu aquela voz. Das sombras no canto do banheiro saiu a cunhada, que fora casada durante anos com o irmão e morrera no acidente de carro que também o levou. Seria um anjo que finalmente veio ajudá-la depois de todas as suas preces? Não. Ela reconheceu que estava enlouquecendo. A infecção seria transmissível? Olhou para os filhos, e os três estavam totalmente rígidos, sem piscar ou respirar.</p>
+    <p class="dial">— Não se preocupe com eles, às vezes, a morte é a melhor coisa que pode acontecer na vida de uma pessoa.</p>
+    <p>Como ela podia falar aquilo dos próprios sobrinhos?</p>
+    <p class="dial">— Você é mais burra do que eu pensava — a coisa riu, como se fosse o melhor dia da vida dela.</p>
+    <p class="dial">— Que merda é essa?</p>
+  </div>
+
+  <div class="text-block">
+    <p>A coisa usando o rosto da cunhada inclinou a cabeça devagar. Yumi sentiu o corpo inteiro tremer.</p>
+    <p class="beat">A voz era a mesma e o rosto também, mas havia algo errado na forma como ela sorria. A boca se abria demais. Como se a pele estivesse aprendendo a imitar um ser humano.</p>
+    <p class="dial">— Que merda é essa, Kishin? Por que está agindo desse jeito? — Yumi perguntou, alterada.</p>
+  </div>
+
+  <div class="text-block">
+    <p>Kishin agarrou seus braços e Yumi tentou lutar, mas seu corpo já não tinha mais força suficiente. Foram tantos anos de sofrimento que o acúmulo gerou um cansaço generalizado, e nem mesmo a adrenalina era capaz de reanimá-la.</p>
+    <p class="dial">— Seu irmão tentou te poupar, sabe? Imaginou que matando o corpo da Kishin, poderia me levar também, mas não é assim que as coisas funcionam.</p>
+    <p class="dial">— O que é você? — Yumi perguntou enquanto chorava.</p>
+    <p>A coisa ignorou a pergunta, os olhos pretos deslizaram até Hana, depois Sakura, depois Hikaru.</p>
+    <p class="dial">— Eles ficaram tão parecidos com você quando começou.</p>
+  </div>
+
+  <div class="text-block">
+    <p>Então ela lembrou da infância e da sombra no canto do quarto. Os choros durante a madrugada. A sensação constante de estar sendo observada. As orações sussurradas de sua mãe atrás da porta.</p>
+    <p class="dial">— Durante um tempo, era para ter sido apenas você, mas você rezou tanto por eles — a coisa manteve os olhos fixados nos três.</p>
+    <p>Yumi sentiu o estômago afundar.</p>
+    <p class="dial">— Sabia que foi a primeira vez que você me pediu alguma coisa?</p>
+    <p>A criatura sorriu de forma exagerada.</p>
+    <p class="dial">— Seria muito entediante te matar antes de destruir o seu maior sonho. Então eu dei uma família para você.</p>
+  </div>
+
+  <div class="text-block">
+    <p>Os vizinhos escutaram os últimos gritos conforme o sol nascia, assim como sempre. Porém, naquele dia, a manhã começou diferente.</p>
+    <div class="news">
+      "Esta noite, uma mulher foi encontrada morta em sua casa, em Fukui. As câmeras de segurança mostraram uma movimentação no local quando os três filhos tentaram fugir durante a madrugada, mas não resistiram por muito tempo. Já era consenso que possuíam uma severa infecção na pele, ainda estudada por médicos e pesquisadores. A polícia segue investigando o caso, e nenhum suspeito foi encontrado."
+    </div>
+  </div>
+
+  <p class="fim">fim</p>
+
+</main>
+
+<script>
+  const blocks = document.querySelectorAll('.text-block');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.12 });
+  blocks.forEach(b => io.observe(b));
+
+  function spawnDot(x, y) {
+    if (Math.random() > 0.55) return;
+    const dot = document.createElement('div');
+    dot.className = 'drip-dot';
+    dot.style.left = x - 2 + 'px';
+    dot.style.top  = y - 2 + 'px';
+    document.body.appendChild(dot);
+    setTimeout(() => dot.remove(), 900);
+  }
+  document.addEventListener('mousemove', e => spawnDot(e.clientX, e.clientY));
+  document.addEventListener('touchmove', e => {
+    Array.from(e.touches).forEach(t => spawnDot(t.clientX, t.clientY));
+  }, { passive: true });
+
+  const canvas = document.getElementById('eye-canvas');
+  const ctx    = canvas.getContext('2d');
+  const whisper = document.getElementById('whisper-cover');
+
+  let W, H, frame = 0, globalAlpha = 0;
+  let pointer = { x: -999, y: -999, active: false };
+  let lastMove = Date.now();
+
+  function resize() {
+    W = canvas.width  = canvas.offsetWidth;
+    H = canvas.height = canvas.offsetHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  canvas.addEventListener('mousemove', e => {
+    const r = canvas.getBoundingClientRect();
+    pointer.x = e.clientX - r.left;
+    pointer.y = e.clientY - r.top;
+    pointer.active = true;
+    lastMove = Date.now();
+  });
+  canvas.addEventListener('mouseleave', () => { pointer.active = false; pointer.x = -999; });
+
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches[0];
+    pointer.x = t.clientX - r.left;
+    pointer.y = t.clientY - r.top;
+    pointer.active = true;
+    lastMove = Date.now();
+  }, { passive: false });
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches[0];
+    pointer.x = t.clientX - r.left;
+    pointer.y = t.clientY - r.top;
+    pointer.active = true;
+    lastMove = Date.now();
+  }, { passive: false });
+  canvas.addEventListener('touchend', () => {
+    setTimeout(() => { pointer.active = false; }, 1800);
+  });
+
+  const EYES = [
+    { rx:0.18, ry:0.32, size:0.048, phase:0.0  },
+    { rx:0.80, ry:0.52, size:0.034, phase:1.1  },
+    { rx:0.50, ry:0.20, size:0.058, phase:2.3  },
+    { rx:0.30, ry:0.70, size:0.030, phase:0.7  },
+    { rx:0.70, ry:0.18, size:0.040, phase:1.8  },
+    { rx:0.88, ry:0.75, size:0.026, phase:3.1  },
+    { rx:0.12, ry:0.78, size:0.032, phase:2.0  },
+    { rx:0.55, ry:0.68, size:0.044, phase:0.4  },
+    { rx:0.40, ry:0.42, size:0.022, phase:1.5  },
+    { rx:0.62, ry:0.38, size:0.028, phase:2.7  },
+    { rx:0.25, ry:0.50, size:0.036, phase:0.9  },
+  ];
+
+  function eio(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
+
+  function drawBloodDrip(x, y, t) {
+    [{ox:-4,len:6+Math.sin(t*.8)*2,w:1.5},{ox:2,len:10+Math.sin(t*.6+1)*3,w:1.2},{ox:7,len:4+Math.sin(t*1.1+2)*1.5,w:1}]
+    .forEach(d => {
+      const g = ctx.createLinearGradient(x+d.ox, y, x+d.ox, y+d.len);
+      g.addColorStop(0,'rgba(90,10,10,0.9)'); g.addColorStop(1,'rgba(90,10,10,0)');
+      ctx.beginPath(); ctx.moveTo(x+d.ox,y); ctx.lineTo(x+d.ox,y+d.len);
+      ctx.strokeStyle=g; ctx.lineWidth=d.w; ctx.stroke();
+    });
+  }
+
+  function drawEye(ex, ey, size, openness, lx, ly, t) {
+    if (openness < 0.015) return;
+    const sw = size*2.2, sh = size*openness;
+    ctx.save(); ctx.translate(ex, ey);
+
+    ctx.beginPath(); ctx.ellipse(0,0,sw,sh,0,0,Math.PI*2);
+    ctx.fillStyle='rgba(20,6,6,0.97)'; ctx.fill();
+
+    ctx.beginPath(); ctx.ellipse(0,0,sw*.88,sh*.88,0,0,Math.PI*2);
+    ctx.fillStyle='rgba(200,170,160,0.10)'; ctx.fill();
+
+    for (let v=0;v<5;v++){
+      const ang=(v/5)*Math.PI*2+t*.05;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(ang)*sw*.3,Math.sin(ang)*sh*.3);
+      ctx.lineTo(Math.cos(ang)*sw*.78,Math.sin(ang)*sh*.78);
+      ctx.strokeStyle='rgba(130,18,18,0.22)'; ctx.lineWidth=0.6; ctx.stroke();
+    }
+
+    const dx=(lx-ex)/W*.5, dy=(ly-ey)/H*.3;
+    const dist=Math.sqrt(dx*dx+dy*dy), maxOff=size*.4;
+    const px=dist>0?(dx/dist)*Math.min(dist*size*10,maxOff):0;
+    const py=dist>0?(dy/dist)*Math.min(dist*size*10,maxOff):0;
+
+    ctx.beginPath(); ctx.ellipse(px,py,size*.65,size*.65*Math.min(1,openness*.8),0,0,Math.PI*2);
+    const ig=ctx.createRadialGradient(px,py,0,px,py,size*.65);
+    ig.addColorStop(0,'rgba(35,8,8,1)'); ig.addColorStop(.4,'rgba(60,12,12,.9)'); ig.addColorStop(1,'rgba(20,4,4,.95)');
+    ctx.fillStyle=ig; ctx.fill();
+
+    ctx.beginPath(); ctx.ellipse(px,py,size*.38,size*.38*Math.min(1,openness),0,0,Math.PI*2);
+    ctx.fillStyle='#000'; ctx.fill();
+
+    ctx.beginPath(); ctx.ellipse(px-size*.12,py-size*.18,size*.09,size*.07,-.4,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,240,230,0.55)'; ctx.fill();
+
+    const lg=ctx.createLinearGradient(0,-sh,0,0);
+    lg.addColorStop(0,'rgba(7,3,2,0.97)'); lg.addColorStop(.5,'rgba(7,3,2,.28)'); lg.addColorStop(1,'rgba(7,3,2,0)');
+    ctx.beginPath(); ctx.ellipse(0,-sh*.15,sw,sh,0,Math.PI,Math.PI*2); ctx.fillStyle=lg; ctx.fill();
+
+    const lg2=ctx.createLinearGradient(0,sh,0,0);
+    lg2.addColorStop(0,'rgba(7,3,2,0.97)'); lg2.addColorStop(.5,'rgba(7,3,2,.22)'); lg2.addColorStop(1,'rgba(7,3,2,0)');
+    ctx.beginPath(); ctx.ellipse(0,sh*.15,sw,sh,0,0,Math.PI); ctx.fillStyle=lg2; ctx.fill();
+
+    ctx.beginPath(); ctx.ellipse(0,0,sw,sh,0,0,Math.PI*2);
+    ctx.strokeStyle='rgba(80,18,18,0.55)'; ctx.lineWidth=0.8; ctx.stroke();
+    ctx.restore();
+  }
+
+  function loop() {
+    requestAnimationFrame(loop);
+    frame++;
+    const t = frame * 0.016;
+    if (globalAlpha < 1) globalAlpha = Math.min(1, globalAlpha + 0.007);
+
+    ctx.clearRect(0, 0, W, H);
+
+    const vg = ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*.75);
+    vg.addColorStop(0,'rgba(18,9,6,0.7)'); vg.addColorStop(1,'rgba(4,2,1,0.99)');
+    ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
+
+    const idle = (Date.now()-lastMove)>2500 || !pointer.active;
+    if (idle) {
+      const pulse=(Math.sin(t*.45)+1)/2;
+      const pg=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*.45);
+      pg.addColorStop(0,`rgba(55,8,8,${0.07*pulse})`); pg.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=pg; ctx.fillRect(0,0,W,H);
+    }
+
+    if (pointer.active && pointer.x > 0) {
+      const sg=ctx.createRadialGradient(pointer.x,pointer.y,0,pointer.x,pointer.y,W*.28);
+      sg.addColorStop(0,'rgba(10,5,3,0)'); sg.addColorStop(.55,'rgba(7,3,2,.3)'); sg.addColorStop(1,'rgba(5,2,1,.65)');
+      ctx.fillStyle=sg; ctx.fillRect(0,0,W,H);
+    }
+
+    let whisperShow = false;
+
+    EYES.forEach(eye => {
+      const ex=eye.rx*W, ey=eye.ry*H, sz=eye.size*Math.min(W,H);
+      const bp=(Math.sin(t*.18+eye.phase*1.3)+1)/2;
+      const sp=(Math.sin(t*.09+eye.phase)+1)/2;
+      let open = bp*.7+sp*.3;
+
+      const bt=(t+eye.phase*7)%9;
+      if(bt<.12) open*=1-eio(bt/.06);
+      else if(bt<.22) open*=eio((bt-.12)/.1);
+
+      let alpha = 0.07 + sp*.06;
+
+      if (pointer.active && pointer.x > 0) {
+        const mdx=pointer.x-ex, mdy=pointer.y-ey;
+        const md=Math.sqrt(mdx*mdx+mdy*mdy);
+        const prox=Math.max(0,1-md/(Math.min(W,H)*.4));
+        open=open*(1-prox*.3)+prox*.96;
+        alpha+=prox*.88;
+        if (prox >= 0 && (Date.now()-lastMove)>900) whisperShow=true;
+      }
+
+      open=Math.max(0,Math.min(1,open));
+      ctx.globalAlpha=Math.min(1,alpha)*globalAlpha;
+      drawEye(ex,ey,sz,open,pointer.active?pointer.x:W/2,pointer.active?pointer.y:H/2,t);
+
+      if(open>.28 && alpha>.18){
+        ctx.globalAlpha=(open-.28)*alpha*.55*globalAlpha;
+        drawBloodDrip(ex,ey+sz*.72,t+eye.phase);
+      }
+      ctx.globalAlpha=1;
+    });
+
+    whisper.style.color = whisperShow ? 'rgba(180,155,120,0.52)' : 'rgba(200,184,154,0)';
+    whisper.style.textShadow = whisperShow ? '0 0 22px rgba(100,15,15,0.5)' : 'none';
+
+    if(frame%3===0){
+      const id=ctx.createImageData(W,H);
+      for(let j=0;j<id.data.length;j+=4){
+        const n=(Math.random()-.5)*16;
+        id.data[j]=n;id.data[j+1]=n;id.data[j+2]=n;id.data[j+3]=10;
+      }
+      ctx.putImageData(id,0,0);
+    }
+  }
+
+  loop();
+</script>
+</body>
+</html>
